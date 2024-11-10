@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toastmasters Timer with Detailed Logs</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #timer {
+            font-size: 48px;
+            margin: 20px;
+        }
+        #light {
+            width: 100px;
+            height: 100px;
+            margin: 20px auto;
+            border-radius: 50%;
+        }
+        #log {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Toastmasters Timer</h1>
+    <label for="participant">Participant Name:</label>
+    <input type="text" id="participant" placeholder="Enter participant's name">
+    <br><br>
+    <button onclick="startTimer('prepared')">Start Prepared Speech</button>
+    <button onclick="startTimer('tableTopics')">Start Table Topics</button>
+    <button onclick="startTimer('evaluation')">Start Evaluation Speech</button>
+    <button onclick="stopTimer()">Stop Timer</button>
+    <div id="participantDisplay"></div>
+    <div id="timer">00:00</div>
+    <div id="light"></div>
+
+    <h2>Time Log</h2>
+    <div id="log"></div>
+
+    <h2>Statistics</h2>
+    <div id="stats"></div>
+
+    <script>
+        let interval;
+        let startTime;
+        let elapsedTime = 0;
+        let running = false;
+        let currentSpeechType = '';
+        let light = document.getElementById("light");
+        let log = document.getElementById("log");
+        let stats = document.getElementById("stats");
+        let participantsLog = [];
+
+        function startTimer(type) {
+            const participantName = document.getElementById("participant").value;
+            if (participantName.trim() === "") {
+                alert("Please enter a participant's name.");
+                return;
+            }
+            currentSpeechType = type;
+            document.getElementById("participantDisplay").textContent = `Current Participant: ${participantName} (${type.charAt(0).toUpperCase() + type.slice(1)} Speech)`;
+
+            if (interval) clearInterval(interval);
+            elapsedTime = 0;
+            running = true;
+            startTime = new Date().getTime();
+
+            interval = setInterval(() => {
+                if (!running) return;
+
+                const currentTime = new Date().getTime();
+                elapsedTime = Math.floor((currentTime - startTime) / 1000);
+                let minutes = Math.floor(elapsedTime / 60);
+                let seconds = elapsedTime % 60;
+
+                document.getElementById("timer").textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                // Change light color based on the type of speech and elapsed time
+                if (type === 'prepared') {
+                    if (elapsedTime >= 5 * 60 && elapsedTime < 6 * 60) {
+                        light.style.backgroundColor = "green"; // Green at 5 minutes
+                    } else if (elapsedTime >= 6 * 60 && elapsedTime < 7 * 60) {
+                        light.style.backgroundColor = "yellow"; // Yellow at 6 minutes
+                    } else if (elapsedTime >= 7 * 60) {
+                        light.style.backgroundColor = "red"; // Red at 7 minutes
+                    }
+                } else if (type === 'tableTopics') {
+                    if (elapsedTime >= 1 * 60 && elapsedTime < 1.5 * 60) {
+                        light.style.backgroundColor = "green"; // Green at 1 minute
+                    } else if (elapsedTime >= 1.5 * 60 && elapsedTime < 2 * 60) {
+                        light.style.backgroundColor = "yellow"; // Yellow at 1.5 minutes
+                    } else if (elapsedTime >= 2 * 60) {
+                        light.style.backgroundColor = "red"; // Red at 2 minutes
+                    }
+                } else if (type === 'evaluation') {
+                    if (elapsedTime >= 2 * 60 && elapsedTime < 2.5 * 60) {
+                        light.style.backgroundColor = "green"; // Green at 2 minutes
+                    } else if (elapsedTime >= 2.5 * 60 && elapsedTime < 3 * 60) {
+                        light.style.backgroundColor = "yellow"; // Yellow at 2.5 minutes
+                    } else if (elapsedTime >= 3 * 60) {
+                        light.style.backgroundColor = "red"; // Red at 3 minutes
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            running = false;
+            clearInterval(interval);
+            const participantName = document.getElementById("participant").value;
+
+            if (participantName.trim() !== "") {
+                // Check if time exceeded
+                let timeLimit = 0;
+                if (currentSpeechType === 'prepared') {
+                    timeLimit = 7 * 60; // 7 minutes
+                } else if (currentSpeechType === 'tableTopics') {
+                    timeLimit = 2 * 60; // 2 minutes
+                } else if (currentSpeechType === 'evaluation') {
+                    timeLimit = 3 * 60; // 3 minutes
+                }
+
+                let isOvertime = elapsedTime > timeLimit;
+                let minutes = Math.floor(elapsedTime / 60);
+                let seconds = elapsedTime % 60;
+                let logEntry = document.createElement("div");
+                logEntry.textContent = `Participant: ${participantName} - Type: ${currentSpeechType.charAt(0).toUpperCase() + currentSpeechType.slice(1)} - Time Used: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` + (isOvertime ? " (Overtime)" : "");
+                log.appendChild(logEntry);
+
+                // Store the entry in the log
+                participantsLog.push({
+                    name: participantName,
+                    type: currentSpeechType,
+                    time: elapsedTime,
+                    overtime: isOvertime
+                });
+
+                updateStatistics();
+            }
+        }
+
+        function updateStatistics() {
+            let typesCount = {
+                prepared: { total: 0, overtime: 0 },
+                tableTopics: { total: 0, overtime: 0 },
+                evaluation: { total: 0, overtime: 0 }
+            };
+
+            participantsLog.forEach(entry => {
+                typesCount[entry.type].total++;
+                if (entry.overtime) {
+                    typesCount[entry.type].overtime++;
+                }
+            });
+
+            stats.innerHTML = `
+                <p>Prepared Speech Overtime: ${typesCount.prepared.overtime}/${typesCount.prepared.total} (${((typesCount.prepared.overtime / (typesCount.prepared.total || 1)) * 100).toFixed(2)}%)</p>
+                <p>Table Topics Overtime: ${typesCount.tableTopics.overtime}/${typesCount.tableTopics.total} (${((typesCount.tableTopics.overtime / (typesCount.tableTopics.total || 1)) * 100).toFixed(2)}%)</p>
+                <p>Evaluation Speech Overtime: ${typesCount.evaluation.overtime}/${typesCount.evaluation.total} (${((typesCount.evaluation.overtime / (typesCount.evaluation.total || 1)) * 100).toFixed(2)}%)</p>
+            `;
+        }
+    </script>
+</body>
+</html>
