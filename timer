@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toastmasters Timer with Logs and Statistics</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #timer {
+            font-size: 48px;
+            margin: 20px;
+        }
+        #light {
+            width: 100px;
+            height: 100px;
+            margin: 20px auto;
+            border-radius: 50%;
+            background-color: grey;
+        }
+        #log, #stats {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+            max-width: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Toastmasters Timer</h1>
+    <label for="participant">Participant Name:</label>
+    <input type="text" id="participant" placeholder="Enter participant's name">
+    <br><br>
+    <button onclick="startTimer('1min')">Start 1 Minute</button>
+    <button onclick="startTimer('2mins')">Start 2 Minutes</button>
+    <button onclick="startTimer('5mins')">Start 5 Minutes</button>
+    <button onclick="startTimer('2-3mins')">Start 2-3 Minutes</button>
+    <button onclick="startTimer('5-7mins')">Start 5-7 Minutes</button>
+    <button onclick="stopTimer()">Stop Timer</button>
+    <div id="participantDisplay"></div>
+    <div id="timer">00:00</div>
+    <div id="light"></div>
+
+    <h2>Time Log</h2>
+    <div id="log">No logs yet.</div>
+
+    <h2>Statistics</h2>
+    <div id="stats">No data yet.</div>
+
+    <script>
+        let interval;
+        let elapsedTime = 0;
+        let running = false;
+        let currentSpeechType = '';
+        let light = document.getElementById("light");
+        let log = document.getElementById("log");
+        let stats = document.getElementById("stats");
+        let participantsLog = [];
+
+        function startTimer(type) {
+            const participantName = document.getElementById("participant").value;
+            if (participantName.trim() === "") {
+                alert("Please enter a participant's name.");
+                return;
+            }
+            currentSpeechType = type;
+            document.getElementById("participantDisplay").textContent = `Current Participant: ${participantName} (${type})`;
+
+            // Clear any existing interval and reset state
+            if (interval) clearInterval(interval);
+            elapsedTime = 0;
+            running = true;
+
+            // Reset light color to initial state
+            light.style.backgroundColor = 'grey';
+
+            interval = setInterval(() => {
+                if (!running) return;
+
+                elapsedTime++;
+                let minutes = Math.floor(elapsedTime / 60);
+                let seconds = elapsedTime % 60;
+
+                document.getElementById("timer").textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                if (type === '1min' && elapsedTime >= 60) {
+                    light.style.backgroundColor = "red"; // Red at 1 minute
+                } else if (type === '2mins' && elapsedTime >= 120) {
+                    light.style.backgroundColor = "red"; // Red at 2 minutes
+                } else if (type === '5mins' && elapsedTime >= 300) {
+                    light.style.backgroundColor = "red"; // Red at 5 minutes
+                } else if (type === '2-3mins' && elapsedTime >= 180) {
+                    light.style.backgroundColor = "red"; // Red at 3 minutes
+                } else if (type === '5-7mins' && elapsedTime >= 420) {
+                    light.style.backgroundColor = "red"; // Red at 7 minutes
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            running = false;
+            clearInterval(interval);
+            const participantName = document.getElementById("participant").value;
+
+            if (participantName.trim() !== "") {
+                let timeLimit = 0;
+                if (currentSpeechType === '1min') {
+                    timeLimit = 1 * 60; // 1 minute
+                } else if (currentSpeechType === '2mins') {
+                    timeLimit = 2 * 60; // 2 minutes
+                } else if (currentSpeechType === '5mins') {
+                    timeLimit = 5 * 60; // 5 minutes
+                } else if (currentSpeechType === '2-3mins') {
+                    timeLimit = 3 * 60; // 3 minutes
+                } else if (currentSpeechType === '5-7mins') {
+                    timeLimit = 7 * 60; // 7 minutes
+                }
+
+                let isOvertime = elapsedTime > timeLimit;
+                let minutes = Math.floor(elapsedTime / 60);
+                let seconds = elapsedTime % 60;
+                let logEntry = document.createElement("div");
+                logEntry.textContent = `Participant: ${participantName} - Type: ${currentSpeechType} - Time Used: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` + (isOvertime ? " (Overtime)" : "");
+                log.appendChild(logEntry);
+
+                participantsLog.push({
+                    name: participantName,
+                    type: currentSpeechType,
+                    time: elapsedTime,
+                    overtime: isOvertime
+                });
+
+                updateStatistics();
+            }
+        }
+
+        function updateStatistics() {
+            if (participantsLog.length === 0) {
+                stats.textContent = "No data yet.";
+                return;
+            }
+
+            let typesCount = {
+                '1min': { total: 0, overtime: 0 },
+                '2mins': { total: 0, overtime: 0 },
+                '5mins': { total: 0, overtime: 0 },
+                '2-3mins': { total: 0, overtime: 0 },
+                '5-7mins': { total: 0, overtime: 0 }
+            };
+
+            participantsLog.forEach(entry => {
+                typesCount[entry.type].total++;
+                if (entry.overtime) {
+                    typesCount[entry.type].overtime++;
+                }
+            });
+
+            stats.innerHTML = `
+                <p>1 Minute Overtime: ${typesCount['1min'].overtime}/${typesCount['1min'].total} (${((typesCount['1min'].overtime / (typesCount['1min'].total || 1)) * 100).toFixed(2)}%)</p>
+                <p>2 Minutes Overtime: ${typesCount['2mins'].overtime}/${typesCount['2mins'].total} (${((typesCount['2mins'].overtime / (typesCount['2mins'].total || 1)) * 100).toFixed(2)}%)</p>
+                <p>5 Minutes Overtime: ${typesCount['5mins'].overtime}/${typesCount['5mins'].total} (${((typesCount['5mins'].overtime / (typesCount['5mins'].total || 1)) * 100).toFixed(2)}%)</p>
+                <p>2-3 Minutes Overtime: ${typesCount['2-3mins'].overtime}/${typesCount['2-3mins'].total} (${((typesCount['2-3mins'].overtime / (typesCount['2-3mins'].total || 1)) * 100).toFixed(2)}%)</p>
+                <p>5-7 Minutes Overtime: ${typesCount['5-7mins'].overtime}/${typesCount['5-7mins'].total} (${((typesCount['5-7mins'].overtime / (typesCount['5-7mins'].total || 1)) * 100).toFixed(2)}%)</p>
+            `;
+        }
+    </script>
+</body>
+</html>
